@@ -2,7 +2,7 @@ import { app, ipcMain, shell, type IpcMainInvokeEvent } from 'electron'
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'fs'
 import { basename, dirname, join } from 'path'
 
-const maxEntries = 12
+const maxEntries = 3
 
 let cached: RecentDownload[] | null = null
 
@@ -15,9 +15,11 @@ export function loadHistory(): RecentDownload[] {
   try {
     const parsed = JSON.parse(readFileSync(historyFile(), 'utf8')) as RecentDownload[]
     cached = Array.isArray(parsed)
-      ? parsed.filter(
-          (item) => item && typeof item.name === 'string' && typeof item.timestamp === 'number'
-        )
+      ? parsed
+          .filter(
+            (item) => item && typeof item.name === 'string' && typeof item.timestamp === 'number'
+          )
+          .slice(0, maxEntries)
       : []
   } catch {
     cached = []

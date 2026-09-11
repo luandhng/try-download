@@ -540,13 +540,25 @@ function App(): React.JSX.Element {
       </AnimatePresence>
       {recent.length > 0 && (
         <div className="absolute inset-x-0 bottom-0 px-4 pb-4">
-          <div className="mx-auto flex w-fit max-w-full gap-3 overflow-x-auto p-2">
-            <AnimatePresence initial={false}>
-              {recent.slice(0, 3).map((item, index) => (
+          <motion.div layoutScroll className="flex justify-center-safe gap-3 overflow-x-auto p-3">
+            <AnimatePresence initial={false} mode="popLayout">
+              {recent.slice(0, 3).map((item) => (
                 <MotionCard
-                  key={`${item.path ?? item.name}-${item.timestamp}-${index}`}
+                  key={`${item.path ?? item.name}-${item.timestamp}`}
                   layout
-                  exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.15 } }}
+                  initial={{ opacity: 0, y: 12, scale: 0.95 }}
+                  animate={{
+                    opacity: 1,
+                    y: 0,
+                    scale: 1,
+                    transition: { type: 'spring', stiffness: 420, damping: 32 }
+                  }}
+                  exit={{
+                    opacity: 0,
+                    y: 8,
+                    scale: 0.95,
+                    transition: { duration: 0.22, ease: 'easeIn' }
+                  }}
                   size="sm"
                   className="w-56 shrink-0 cursor-pointer rounded-2xl transition-colors data-[size=sm]:[--card-spacing:--spacing(2)] hover:bg-accent/50"
                   onClick={() => item.path && void window.api.openDownload(item.path)}
@@ -572,7 +584,7 @@ function App(): React.JSX.Element {
                 </MotionCard>
               ))}
             </AnimatePresence>
-          </div>
+          </motion.div>
         </div>
       )}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
