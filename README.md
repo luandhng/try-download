@@ -33,8 +33,8 @@ DRM services (Netflix, Disney+, Spotify, Apple Music, and similar) are not suppo
   `resources/yt-dlp.exe`) are stored with Git LFS. Without Git LFS you get pointer files instead of
   executables.
 
-Windows is the supported platform out of the box. The app also runs on macOS and Linux, but you must
-provide the binaries yourself (see [Binaries](#binaries)).
+Windows is the supported platform out of the box. On macOS and Linux, run
+`npm run setup:binaries` before `npm run dev` (see [Binaries](#binaries)).
 
 ## Getting started
 
@@ -55,30 +55,42 @@ The app looks for FFmpeg and yt-dlp in `resources/`, with the `.exe` suffix on W
 | macOS    | `ffmpeg`     | `yt-dlp`     |
 | Linux    | `ffmpeg`     | `yt-dlp`     |
 
-Only the Windows binaries are committed (via Git LFS). On macOS and Linux, download your own and
-place them in `resources/`, then make them executable:
+Only the Windows binaries are committed (via Git LFS). On macOS and Linux, or whenever binaries are
+missing (Git LFS pointer files), fetch matching ones automatically:
 
 ```bash
-# yt-dlp: https://github.com/yt-dlp/yt-dlp/releases
-#   macOS: yt-dlp_macos   Linux: yt-dlp_linux
-# ffmpeg: any static build from https://ffmpeg.org/download.html
-chmod +x resources/ffmpeg resources/yt-dlp
+npm run setup:binaries
 ```
 
-Keep other-platform binaries out of git unless you intend to store them with Git LFS.
+This downloads yt-dlp from its GitHub releases and a static FFmpeg build from
+[eugeneware/ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) into `resources/`, and marks
+them executable. On macOS it also ad-hoc signs them, which Apple Silicon requires for downloaded
+executables. Use `npm run setup:binaries -- --force` to update. You can also download them manually;
+use the file names from the table above.
+
+Non-Windows binaries are gitignored, so fetched binaries won't be committed by accident.
+
+## Releases
+
+Pushing a tag like `v1.0.0` runs the [Build workflow](.github/workflows/build.yml), which builds
+installers for Windows, macOS, and Linux and opens a draft GitHub release with the artifacts. macOS
+releases are built for Apple Silicon and unsigned unless signing secrets (`MAC_CSC_LINK`,
+`MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`, and for Windows
+`WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`) are configured in the repository.
 
 ## Scripts
 
-| Command               | Description                                                    |
-| --------------------- | -------------------------------------------------------------- |
-| `npm run dev`         | Start the app in development mode with hot reload              |
-| `npm run typecheck`   | Type-check the main/preload (`node`) and renderer (`web`) code |
-| `npm run lint`        | Run ESLint                                                     |
-| `npm run format`      | Format all files with Prettier                                 |
-| `npm run build`       | Type-check and bundle the app                                  |
-| `npm run build:win`   | Build a Windows installer (NSIS)                               |
-| `npm run build:mac`   | Build a macOS disk image                                       |
-| `npm run build:linux` | Build AppImage, snap, and deb packages                         |
+| Command                  | Description                                                    |
+| ------------------------ | -------------------------------------------------------------- |
+| `npm run dev`            | Start the app in development mode with hot reload              |
+| `npm run setup:binaries` | Download FFmpeg and yt-dlp for the current platform            |
+| `npm run typecheck`      | Type-check the main/preload (`node`) and renderer (`web`) code |
+| `npm run lint`           | Run ESLint                                                     |
+| `npm run format`         | Format all files with Prettier                                 |
+| `npm run build`          | Type-check and bundle the app                                  |
+| `npm run build:win`      | Build a Windows installer (NSIS)                               |
+| `npm run build:mac`      | Build a macOS disk image                                       |
+| `npm run build:linux`    | Build AppImage and deb packages                                |
 
 `build:mac` and `build:linux` must run on the target operating system (or in a matching CI runner)
 and require the corresponding binaries in `resources/`.
@@ -122,9 +134,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details and conventions.
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) is released under the Unlicense (public domain).
   TryDownload is not affiliated with the yt-dlp project.
-- [FFmpeg](https://ffmpeg.org/legal.html) is a separate program invoked by this app. The bundled
-  Windows build is distributed under its own license; if you redistribute this app, review that
-  license and provide the corresponding FFmpeg sources or a link to them.
+- [FFmpeg](https://ffmpeg.org/legal.html) is a separate program invoked by this app. The static
+  builds fetched by `npm run setup:binaries` come from
+  [eugeneware/ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) and are GPLv3; the
+  committed Windows binary is a gyan.dev build. If you redistribute this app, review the FFmpeg
+  license and provide the corresponding sources or a link to them.
 - Other dependencies are covered by their respective licenses.
 
 ## Disclaimer

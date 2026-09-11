@@ -13,6 +13,9 @@ asarUnpack:
   - resources/**
 win:
   executableName: try-download
+  files:
+    - '!resources/ffmpeg'
+    - '!resources/yt-dlp'
 nsis:
   artifactName: ${name}-${version}-setup.${ext}
   shortcutName: ${productName}
@@ -20,21 +23,26 @@ nsis:
   createDesktopShortcut: always
 mac:
   entitlementsInherit: build/entitlements.mac.plist
+  binaries:
+    - Resources/app.asar.unpacked/resources/ffmpeg
+    - Resources/app.asar.unpacked/resources/yt-dlp
+  files:
+    - '!resources/*.exe'
   extendInfo:
     - NSCameraUsageDescription: Application requests access to the device's camera.
     - NSMicrophoneUsageDescription: Application requests access to the device's microphone.
     - NSDocumentsFolderUsageDescription: Application requests access to the user's Documents folder.
     - NSDownloadsFolderUsageDescription: Application requests access to the user's Downloads folder.
-  notarize: false
 dmg:
   artifactName: ${name}-${version}.${ext}
 linux:
   target:
     - AppImage
-    - snap
     - deb
   maintainer: electronjs.org
   category: Utility
+  files:
+    - '!resources/*.exe'
 appImage:
   artifactName: ${name}-${version}.${ext}
 npmRebuild: false

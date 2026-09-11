@@ -15,8 +15,12 @@ Requirements:
 git clone https://github.com/luandhng/try-download.git
 cd try-download
 npm install
+npm run setup:binaries
 npm run dev
 ```
+
+`setup:binaries` skips binaries that are already present, so it is safe to run on any platform. See
+the [README](README.md#binaries) for details.
 
 Before opening a pull request, make sure these pass:
 
@@ -24,6 +28,20 @@ Before opening a pull request, make sure these pass:
 npm run typecheck
 npm run lint
 ```
+
+## CI and releases
+
+[`.github/workflows/build.yml`](.github/workflows/build.yml) builds Windows, macOS, and Linux
+installers. It runs on every `v*` tag and can also be triggered manually from the Actions tab. On a
+tag push it opens a draft GitHub release with the installers attached.
+
+The workflow runs `npm run setup:binaries` on each runner instead of relying on Git LFS, so release
+builds always bundle platform-correct binaries. Builds are unsigned by default; add these repository
+secrets to sign them:
+
+- Windows: `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`
+- macOS: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, plus `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and
+  `APPLE_TEAM_ID` for notarization
 
 ## Architecture
 
