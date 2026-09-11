@@ -57,8 +57,6 @@ jobs:
             dist/*.zip
             dist/*.AppImage
             dist/*.deb
-            dist/*.yml
-            dist/*.blockmap
 
   release:
     name: Draft release

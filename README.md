@@ -6,6 +6,21 @@ Desktop app for downloading video and audio from thousands of sites. Built with 
 and TypeScript, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and
 [FFmpeg](https://ffmpeg.org/).
 
+## Download
+
+Installers for the latest version are on the
+[Releases](https://github.com/luandhng/try-download/releases) page:
+
+| Platform              | File                                                                                               |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| Windows               | `try-download-<version>-setup.exe`                                                                 |
+| macOS (Apple Silicon) | `try-download-<version>.dmg`                                                                       |
+| Linux                 | `try-download-<version>.AppImage` (portable) or `try-download_<version>_amd64.deb` (Debian/Ubuntu) |
+
+You can ignore `.yml` and `.blockmap` files if you see them on older releases; they are auto-update
+metadata, not installers. macOS builds are not signed, so on first launch use right-click → Open (or
+System Settings → Privacy & Security → Open Anyway).
+
 ## Features
 
 - **Video downloads** as MP4, MKV, or WEBM, up to 2160p
