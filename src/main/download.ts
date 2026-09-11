@@ -6,14 +6,15 @@ import { addHistoryEntry } from './history'
 import { cookieArgs, defaultDownloadDir } from './settings'
 
 function bundledBinary(name: string): string {
+  const binary = process.platform === 'win32' ? `${name}.exe` : name
   return app.isPackaged
-    ? join(process.resourcesPath, 'app.asar.unpacked', 'resources', name)
-    : join(__dirname, '../../resources', name)
+    ? join(process.resourcesPath, 'app.asar.unpacked', 'resources', binary)
+    : join(__dirname, '../../resources', binary)
 }
 
-const ffmpegPath = bundledBinary('ffmpeg.exe')
+const ffmpegPath = bundledBinary('ffmpeg')
 
-const ytDlpPath = bundledBinary('yt-dlp.exe')
+const ytDlpPath = bundledBinary('yt-dlp')
 
 const directMediaPattern = /\.(mp4|m4v|mkv|webm|mov|avi|ts|m3u8|mpd|mp3|m4a|aac|flac|wav|ogg)$/i
 

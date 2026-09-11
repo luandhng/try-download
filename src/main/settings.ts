@@ -100,7 +100,6 @@ export function cookieArgs(): string[] {
 
 function settingsPayload(): {
   downloadDir: string
-  isDefault: boolean
   theme: ThemeMode
   background: boolean
   backgroundStyle: BackgroundStyle
@@ -111,7 +110,6 @@ function settingsPayload(): {
   const settings = loadSettings()
   return {
     downloadDir: defaultDownloadDir(),
-    isDefault: settings.downloadDir === null,
     theme: settings.theme,
     background: settings.background,
     backgroundStyle: settings.backgroundStyle,
@@ -162,10 +160,5 @@ export function registerSettingsHandlers(): void {
     if (canceled || !filePaths[0]) return null
     saveSettings({ ...loadSettings(), downloadDir: filePaths[0] })
     return filePaths[0]
-  })
-
-  ipcMain.handle('settings:reset-download-dir', () => {
-    saveSettings({ ...loadSettings(), downloadDir: null })
-    return app.getPath('downloads')
   })
 }

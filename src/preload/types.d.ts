@@ -75,7 +75,6 @@ declare global {
 
   interface AppSettings {
     downloadDir: string
-    isDefault: boolean
     theme: ThemeMode
     background: boolean
     backgroundStyle: BackgroundStyle
@@ -96,7 +95,6 @@ declare global {
     getSettings: () => Promise<AppSettings>
     updateSettings: (patch: SettingsPatch) => Promise<AppSettings>
     chooseDownloadDir: () => Promise<string | null>
-    resetDownloadDir: () => Promise<string>
     setTheme: (theme: ThemeMode) => Promise<ThemeMode>
   }
 

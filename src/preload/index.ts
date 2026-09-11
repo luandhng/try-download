@@ -14,7 +14,6 @@ const api: DownloadApi & SettingsApi & HistoryApi = {
   getSettings: () => ipcRenderer.invoke('settings:get'),
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   chooseDownloadDir: () => ipcRenderer.invoke('settings:choose-download-dir'),
-  resetDownloadDir: () => ipcRenderer.invoke('settings:reset-download-dir'),
   setTheme: (theme) => ipcRenderer.invoke('settings:set-theme', theme),
   getRecentDownloads: () => ipcRenderer.invoke('downloads:list'),
   removeRecentDownload: (entry) => ipcRenderer.invoke('downloads:remove', entry),
