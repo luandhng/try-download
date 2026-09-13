@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
 import { electronAPI } from '@electron-toolkit/preload'
 
-const api: DownloadApi & SettingsApi & HistoryApi = {
+const api: DownloadApi & SettingsApi & HistoryApi & ExtensionApi = {
   startQueue: (items, options) => ipcRenderer.invoke('download:startQueue', items, options),
   probeDownload: (url) => ipcRenderer.invoke('download:probe', url),
   onQueueItem: (callback) => {
@@ -15,6 +15,11 @@ const api: DownloadApi & SettingsApi & HistoryApi = {
   updateSettings: (patch) => ipcRenderer.invoke('settings:update', patch),
   chooseDownloadDir: () => ipcRenderer.invoke('settings:choose-download-dir'),
   setTheme: (theme) => ipcRenderer.invoke('settings:set-theme', theme),
+  getLaunchAtLogin: () => ipcRenderer.invoke('settings:get-launch-at-login'),
+  setLaunchAtLogin: (enabled) => ipcRenderer.invoke('settings:set-launch-at-login', enabled),
+  getExtensionDir: () => ipcRenderer.invoke('extension:get-dir'),
+  openExtensionFolder: () => ipcRenderer.invoke('extension:open-folder'),
+  copyChromeUrl: () => ipcRenderer.invoke('extension:copy-chrome-url'),
   getRecentDownloads: () => ipcRenderer.invoke('downloads:list'),
   removeRecentDownload: (entry) => ipcRenderer.invoke('downloads:remove', entry),
   openDownload: (path) => ipcRenderer.invoke('downloads:open', path)

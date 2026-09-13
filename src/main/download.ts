@@ -1,9 +1,16 @@
-import { app, ipcMain, type WebContents } from 'electron'
+import { app, BrowserWindow, ipcMain, Notification, type WebContents } from 'electron'
 import { spawn, type ChildProcess } from 'child_process'
+import { randomUUID } from 'crypto'
 import { existsSync } from 'fs'
 import { basename, dirname, extname, join } from 'path'
 import { addHistoryEntry } from './history'
-import { cookieArgs, defaultDownloadDir } from './settings'
+import {
+  cookieArgs,
+  defaultDownloadDir,
+  pickDownloadDir,
+  qualitySetting,
+  saveMode
+} from './settings'
 
 function bundledBinary(name: string): string {
   const binary = process.platform === 'win32' ? `${name}.exe` : name
@@ -55,7 +62,7 @@ function validAudioFormat(format?: string): string {
 }
 
 function validAudioQuality(quality?: string): string {
-  return quality && audioQualities.has(quality) ? quality : '192'
+  return quality && audioQualities.has(quality) ? quality : 'best'
 }
 
 function audioCodecArgs(format: string, quality: string): string[] {
@@ -128,8 +135,20 @@ interface QueueEntry {
 
 let queue: QueueEntry[] = []
 let queueOptions: DownloadOptions = { mode: 'video' }
+let queueDownloadDir: string | null = null
 let processing = false
 let currentProc: ChildProcess | null = null
+
+const externalIds = new Set<string>()
+
+function downloadDir(): string {
+  return queueDownloadDir ?? defaultDownloadDir()
+}
+
+function notifyDownload(body: string): void {
+  if (!Notification.isSupported()) return
+  new Notification({ title: 'Cheepli Download', body }).show()
+}
 
 function probeUrl(parsed: URL): Promise<ProbeResult> {
   return new Promise((resolve) => {
@@ -207,6 +226,53 @@ function sendItem(sender: WebContents, entry: QueueEntry): void {
   })
 }
 
+async function startQueue(
+  items: QueueRequestItem[],
+  options: DownloadOptions,
+  sender: WebContents | null
+): Promise<StartQueueResult> {
+  queueDownloadDir = null
+  if (saveMode() === 'ask') {
+    const chosen = await pickDownloadDir(sender)
+    if (!chosen) return { queued: 0, canceled: true }
+    queueDownloadDir = chosen
+  }
+  queue = items.map((item) => ({ id: item.id, url: item.url, status: 'queued' }))
+  queueOptions = options
+  if (sender) {
+    sender.once('destroyed', () => {
+      if (currentProc && !currentProc.killed) currentProc.kill()
+    })
+  }
+  if (!processing && sender) {
+    void processQueue(sender)
+  }
+  return { queued: queue.length }
+}
+
+export async function queueExternalDownload(url: string): Promise<StartQueueResult> {
+  const parsed = new URL(url)
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('Only http(s) URLs are supported')
+  }
+  const window = BrowserWindow.getAllWindows()[0] ?? null
+  if (saveMode() === 'ask') {
+    window?.show()
+    window?.focus()
+  }
+  const id = randomUUID()
+  externalIds.add(id)
+  if (processing) {
+    queue.push({ id, url: parsed.toString(), status: 'queued' })
+    return { queued: queue.length }
+  }
+  return startQueue(
+    [{ id, url: parsed.toString() }],
+    { mode: 'video', quality: qualitySetting() },
+    window?.webContents ?? null
+  )
+}
+
 export function registerDownloadHandlers(): void {
   ipcMain.handle('download:probe', async (_event, url: string) => {
     const parsed = new URL(url)
@@ -218,17 +284,8 @@ export function registerDownloadHandlers(): void {
 
   ipcMain.handle(
     'download:startQueue',
-    (event, items: QueueRequestItem[], options: DownloadOptions = { mode: 'video' }) => {
-      queue = items.map((item) => ({ id: item.id, url: item.url, status: 'queued' }))
-      queueOptions = options
-      event.sender.once('destroyed', () => {
-        if (currentProc && !currentProc.killed) currentProc.kill()
-      })
-      if (!processing) {
-        void processQueue(event.sender)
-      }
-      return { queued: queue.length }
-    }
+    (event, items: QueueRequestItem[], options: DownloadOptions = { mode: 'video' }) =>
+      startQueue(items, options, event.sender)
   )
 }
 
@@ -268,10 +325,12 @@ async function processQueue(sender: WebContents): Promise<void> {
             entry.status = 'skipped'
             entry.name = basename(outputPath)
             entry.outputPath = outputPath
+            if (externalIds.has(entry.id)) notifyDownload(`Already downloaded: ${entry.name}`)
           } else {
             const audioOnly = queueOptions.mode === 'audio'
             entry.name = basename(outputPath)
             sendItem(sender, entry)
+            if (externalIds.has(entry.id)) notifyDownload(`Downloading ${entry.name}`)
             await runFfmpegDownload(
               entry.url,
               outputPath,
@@ -282,25 +341,40 @@ async function processQueue(sender: WebContents): Promise<void> {
             entry.status = 'done'
             entry.outputPath = outputPath
             addHistoryEntry({ name: entry.name ?? basename(outputPath), path: outputPath })
+            if (externalIds.has(entry.id)) notifyDownload(`Downloaded ${entry.name}`)
           }
         } else {
           const result = await runYtDlpDownload(entry.url, queueOptions, onProgress, (info) => {
+            const firstTitle = !entry.name && info.name
             if (info.name) entry.name = info.name
             if (info.path) entry.outputPath = info.path
             if (info.note) entry.note = info.note
+            if (firstTitle && externalIds.has(entry.id)) {
+              notifyDownload(`Downloading ${entry.name}`)
+            }
             sendItem(sender, entry)
           })
           entry.status = result
           if (result === 'done') {
             addHistoryEntry({ name: entry.name ?? entry.url, path: entry.outputPath })
           }
+          if (externalIds.has(entry.id)) {
+            const label = entry.name ?? entry.url
+            notifyDownload(
+              result === 'skipped' ? `Already downloaded: ${label}` : `Downloaded ${label}`
+            )
+          }
         }
       } catch (err) {
         entry.status = 'error'
         entry.error = err instanceof Error ? err.message : String(err)
+        if (externalIds.has(entry.id)) {
+          notifyDownload(`Download failed: ${entry.name ?? entry.url}`)
+        }
       }
 
       sendItem(sender, entry)
+      externalIds.delete(entry.id)
     }
   } finally {
     processing = false
@@ -314,7 +388,7 @@ function directOutputPath(url: URL, options: DownloadOptions): string {
     options.mode === 'audio'
       ? withExtension(base, `.${validAudioFormat(options.audioFormat)}`)
       : withExtension(base, `.${validVideoFormat(options.videoFormat)}`)
-  return join(defaultDownloadDir(), name)
+  return join(downloadDir(), name)
 }
 
 function runFfmpegDownload(
@@ -434,7 +508,7 @@ function runYtDlpDownload(
       '--ffmpeg-location',
       dirname(ffmpegPath),
       '-o',
-      join(defaultDownloadDir(), '%(title)s.%(ext)s')
+      join(downloadDir(), '%(title)s.%(ext)s')
     ]
 
     if (audioFormat) {

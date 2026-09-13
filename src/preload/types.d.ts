@@ -47,8 +47,13 @@ declare global {
     maxHeight?: number
   }
 
+  interface StartQueueResult {
+    queued: number
+    canceled?: boolean
+  }
+
   interface DownloadApi {
-    startQueue: (items: QueueRequestItem[], options: DownloadOptions) => Promise<{ queued: number }>
+    startQueue: (items: QueueRequestItem[], options: DownloadOptions) => Promise<StartQueueResult>
     probeDownload: (url: string) => Promise<ProbeResult>
     onQueueItem: (callback: (item: QueueItemEvent) => void) => () => void
   }
@@ -60,6 +65,8 @@ declare global {
   type CookiesMode = 'none' | 'browser'
 
   type CookiesBrowser = 'chrome' | 'edge' | 'firefox' | 'brave' | 'chromium' | 'vivaldi' | 'opera'
+
+  type SaveMode = 'folder' | 'ask'
 
   interface RecentDownload {
     name: string
@@ -81,6 +88,8 @@ declare global {
     accentColor: string
     cookiesMode: CookiesMode
     cookiesBrowser: CookiesBrowser
+    saveMode: SaveMode
+    quality: string
   }
 
   interface SettingsPatch {
@@ -89,6 +98,8 @@ declare global {
     accentColor?: string
     cookiesMode?: CookiesMode
     cookiesBrowser?: CookiesBrowser
+    saveMode?: SaveMode
+    quality?: string
   }
 
   interface SettingsApi {
@@ -96,10 +107,18 @@ declare global {
     updateSettings: (patch: SettingsPatch) => Promise<AppSettings>
     chooseDownloadDir: () => Promise<string | null>
     setTheme: (theme: ThemeMode) => Promise<ThemeMode>
+    getLaunchAtLogin: () => Promise<boolean>
+    setLaunchAtLogin: (enabled: boolean) => Promise<boolean>
+  }
+
+  interface ExtensionApi {
+    getExtensionDir: () => Promise<string>
+    openExtensionFolder: () => Promise<string>
+    copyChromeUrl: () => Promise<boolean>
   }
 
   interface Window {
     electron: ElectronAPI
-    api: DownloadApi & SettingsApi & HistoryApi
+    api: DownloadApi & SettingsApi & HistoryApi & ExtensionApi
   }
 }

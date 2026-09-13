@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for your interest in improving TryDownload. This guide covers how the app is put together
+Thanks for your interest in improving Cheepli Download. This guide covers how the app is put together
 and the conventions to follow.
 
 ## Setup
@@ -45,7 +45,7 @@ secrets to sign them:
 
 ## Architecture
 
-TryDownload is a standard Electron app with context isolation enabled and three parts:
+Cheepli Download is a standard Electron app with context isolation enabled and three parts:
 
 ### Main process (`src/main`)
 

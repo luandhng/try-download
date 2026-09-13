@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Cheepli Download",
+  "version": "1.0.0",
+  "description": "Send the current tab to the Cheepli Download desktop app.",
+  "permissions": ["activeTab"],
+  "host_permissions": ["http://127.0.0.1:38472/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Download with Cheepli Download"
+  }
+}

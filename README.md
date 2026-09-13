@@ -1,6 +1,6 @@
-# TryDownload
+# Cheepli Download
 
-![TryDownload icon](build/icon.png)
+![Cheepli Download icon](build/icon.png)
 
 Desktop app for downloading video and audio from thousands of sites. Built with Electron, React,
 and TypeScript, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and
@@ -11,11 +11,11 @@ and TypeScript, powered by [yt-dlp](https://github.com/yt-dlp/yt-dlp) and
 Installers for the latest version are on the
 [Releases](https://github.com/luandhng/try-download/releases) page:
 
-| Platform              | File                                                                                               |
-| --------------------- | -------------------------------------------------------------------------------------------------- |
-| Windows               | `try-download-<version>-setup.exe`                                                                 |
-| macOS (Apple Silicon) | `try-download-<version>.dmg`                                                                       |
-| Linux                 | `try-download-<version>.AppImage` (portable) or `try-download_<version>_amd64.deb` (Debian/Ubuntu) |
+| Platform              | File                                                                                                     |
+| --------------------- | -------------------------------------------------------------------------------------------------------- |
+| Windows               | `cheeplidownload-<version>-setup.exe`                                                                    |
+| macOS (Apple Silicon) | `cheeplidownload-<version>.dmg`                                                                          |
+| Linux                 | `cheeplidownload-<version>.AppImage` (portable) or `cheeplidownload_<version>_amd64.deb` (Debian/Ubuntu) |
 
 You can ignore `.yml` and `.blockmap` files if you see them on older releases; they are auto-update
 metadata, not installers. macOS builds are not signed, so on first launch use right-click → Open (or
@@ -34,7 +34,7 @@ System Settings → Privacy & Security → Open Anyway).
 
 ## Supported sites
 
-TryDownload works with anything yt-dlp supports, including: YouTube, YouTube Music, Vimeo,
+Cheepli Download works with anything yt-dlp supports, including: YouTube, YouTube Music, Vimeo,
 Dailymotion, TikTok, Instagram, Facebook, X (Twitter), Reddit, Twitch, SoundCloud, Bandcamp,
 Mixcloud, Bilibili, Niconico, Rumble, Odysee, VK, Loom, Streamable, Archive.org, BBC iPlayer, TED,
 and direct media URLs.
@@ -148,7 +148,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for architecture details and conventions.
 ### Third-party notices
 
 - [yt-dlp](https://github.com/yt-dlp/yt-dlp) is released under the Unlicense (public domain).
-  TryDownload is not affiliated with the yt-dlp project.
+  Cheepli Download is not affiliated with the yt-dlp project.
 - [FFmpeg](https://ffmpeg.org/legal.html) is a separate program invoked by this app. The static
   builds fetched by `npm run setup:binaries` come from
   [eugeneware/ffmpeg-static](https://github.com/eugeneware/ffmpeg-static) and are GPLv3; the

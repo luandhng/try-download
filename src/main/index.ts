@@ -1,12 +1,43 @@
-import { app, shell, BrowserWindow, ipcMain } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, Menu, nativeImage, Tray } from 'electron'
 import { join } from 'path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import icon from '../../resources/icon.png?asset'
 import { registerDownloadHandlers } from './download'
+import { registerExtensionServer } from './extension'
 import { registerSettingsHandlers } from './settings'
 import { registerHistoryHandlers } from './history'
 
-function createWindow(): void {
+let tray: Tray | null = null
+let quitting = false
+
+function showWindow(mainWindow: BrowserWindow): void {
+  if (mainWindow.isMinimized()) mainWindow.restore()
+  mainWindow.show()
+  mainWindow.focus()
+}
+
+function createTray(mainWindow: BrowserWindow): void {
+  if (tray) return
+  const image = nativeImage.createFromPath(icon).resize({ width: 16, height: 16 })
+  tray = new Tray(image)
+  tray.setToolTip('Cheepli Download')
+  tray.setContextMenu(
+    Menu.buildFromTemplate([
+      { label: 'Open Cheepli Download', click: () => showWindow(mainWindow) },
+      { type: 'separator' },
+      {
+        label: 'Quit',
+        click: () => {
+          quitting = true
+          app.quit()
+        }
+      }
+    ])
+  )
+  tray.on('click', () => showWindow(mainWindow))
+}
+
+function createWindow(): BrowserWindow {
   // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 1100,
@@ -24,6 +55,16 @@ function createWindow(): void {
     mainWindow.show()
   })
 
+  mainWindow.on('minimize', () => {
+    mainWindow.hide()
+  })
+
+  mainWindow.on('close', (event) => {
+    if (quitting) return
+    event.preventDefault()
+    mainWindow.hide()
+  })
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -36,6 +77,8 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  return mainWindow
 }
 
 // This method will be called when Electron has finished
@@ -58,13 +101,23 @@ app.whenReady().then(() => {
   registerDownloadHandlers()
   registerSettingsHandlers()
   registerHistoryHandlers()
+  registerExtensionServer()
 
-  createWindow()
+  createTray(createWindow())
+
+  app.on('before-quit', () => {
+    quitting = true
+  })
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
     // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    const [window] = BrowserWindow.getAllWindows()
+    if (window) {
+      showWindow(window)
+    } else {
+      createTray(createWindow())
+    }
   })
 })
 

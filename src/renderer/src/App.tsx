@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CircleHelp, Download, Image as ImageIcon, Settings, X } from 'lucide-react'
+import { Download, Image as ImageIcon, Puzzle, Settings, X } from 'lucide-react'
 import { AnimatePresence, motion } from 'motion/react'
 import { Button } from '@/components/ui/button'
 import { Card, CardAction, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import AnimatedGradient from '@/components/animated-gradient'
+import { BlurReveal } from '@/components/blur-reveal'
 import { ColorSelector } from '@/components/color-selector'
 import LightRays from '@/components/light-rays'
 import { ShimmerText } from '@/components/shimmer-text'
@@ -147,12 +148,14 @@ function App(): React.JSX.Element {
   const [quality, setQuality] = useState('best')
   const [videoFormat, setVideoFormat] = useState('mp4')
   const [audioFormat, setAudioFormat] = useState('mp3')
-  const [audioQuality, setAudioQuality] = useState('192')
+  const [audioQuality, setAudioQuality] = useState('best')
   const [embedThumbnail, setEmbedThumbnail] = useState(false)
   const [queue, setQueue] = useState<QueueItemEvent[]>([])
   const [recent, setRecent] = useState<RecentDownload[]>([])
   const [error, setError] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [extensionOpen, setExtensionOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
   const [sitesOpen, setSitesOpen] = useState(false)
   const [checking, setChecking] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -162,15 +165,18 @@ function App(): React.JSX.Element {
   const [theme, setTheme] = useState<ThemeMode>('system')
   const [cookiesMode, setCookiesMode] = useState<CookiesMode>('none')
   const [cookiesBrowser, setCookiesBrowser] = useState<CookiesBrowser>('chrome')
+  const [saveMode, setSaveMode] = useState<SaveMode>('folder')
+  const [launchAtLogin, setLaunchAtLogin] = useState(false)
+  const [extensionDir, setExtensionDir] = useState('')
   const [warning, setWarning] = useState<string | null>(null)
-  const [background, setBackground] = useState(true)
+  const [background, setBackground] = useState(false)
   const [backgroundStyle, setBackgroundStyle] = useState<BackgroundStyle>('gradient')
   const [accentColor, setAccentColor] = useState('#B566FF')
   const [isDark, setIsDark] = useState(() => document.documentElement.classList.contains('dark'))
   const [viewportHeight, setViewportHeight] = useState(() => window.innerHeight)
 
   const gradientConfig = useMemo(() => {
-    const base = isDark ? '#000000' : '#FAFAFA'
+    const base = isDark ? '#0F0F0F' : '#F5F5F5'
     return {
       preset: 'custom',
       color1: accentColor,
@@ -201,9 +207,11 @@ function App(): React.JSX.Element {
   useEffect(
     () =>
       window.api.onQueueItem((event) => {
-        setQueue((prev) =>
-          prev.map((item) => (item.id === event.id ? { ...item, ...event } : item))
-        )
+        setQueue((prev) => {
+          const exists = prev.some((item) => item.id === event.id)
+          if (!exists) return [...prev, event]
+          return prev.map((item) => (item.id === event.id ? { ...item, ...event } : item))
+        })
         if (event.status === 'done') {
           if (event.note) setWarning(event.note)
           void window.api.getRecentDownloads().then(setRecent)
@@ -222,12 +230,16 @@ function App(): React.JSX.Element {
       setTheme(settings.theme)
       setCookiesMode(settings.cookiesMode)
       setCookiesBrowser(settings.cookiesBrowser)
+      setSaveMode(settings.saveMode)
+      setQuality(settings.quality)
       applyTheme(settings.theme)
       setBackground(settings.background)
       setBackgroundStyle(settings.backgroundStyle)
       setAccentColor(settings.accentColor)
       setIsDark(document.documentElement.classList.contains('dark'))
     })
+    void window.api.getLaunchAtLogin().then(setLaunchAtLogin)
+    void window.api.getExtensionDir().then(setExtensionDir)
   }, [])
 
   const updateBackground = async (enabled: boolean): Promise<void> => {
@@ -275,7 +287,7 @@ function App(): React.JSX.Element {
     setError(null)
     setWarning(null)
     try {
-      await window.api.startQueue(items, {
+      const result = await window.api.startQueue(items, {
         mode,
         quality,
         videoFormat,
@@ -283,6 +295,7 @@ function App(): React.JSX.Element {
         audioQuality,
         embedThumbnail
       })
+      if (result.canceled) setQueue([])
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     }
@@ -342,6 +355,30 @@ function App(): React.JSX.Element {
     setCookiesBrowser(settings.cookiesBrowser)
   }
 
+  const updateSaveMode = async (mode: SaveMode): Promise<void> => {
+    const settings = await window.api.updateSettings({ saveMode: mode })
+    setSaveMode(settings.saveMode)
+  }
+
+  const updateQuality = async (value: string): Promise<void> => {
+    const settings = await window.api.updateSettings({ quality: value })
+    setQuality(settings.quality)
+  }
+
+  const updateLaunchAtLogin = async (enabled: boolean): Promise<void> => {
+    setLaunchAtLogin(await window.api.setLaunchAtLogin(enabled))
+  }
+
+  const openExtensionFolder = async (): Promise<void> => {
+    setExtensionDir(await window.api.openExtensionFolder())
+  }
+
+  const copyChromeUrl = async (): Promise<void> => {
+    await window.api.copyChromeUrl()
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 1600)
+  }
+
   const removeRecent = async (entry: RecentDownload): Promise<void> => {
     setRecent(await window.api.removeRecentDownload(entry))
   }
@@ -358,9 +395,18 @@ function App(): React.JSX.Element {
         ) : (
           <AnimatedGradient config={gradientConfig} />
         ))}
-      <div className="absolute top-4 left-4 font-heading text-base font-semibold tracking-tight">
-        TryDownload
+      <div className="absolute top-4 left-4 font-heading text-base font-extrabold tracking-tight">
+        <span className="text-[#0090ff]">Cheepli</span>Download
       </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-4 right-16"
+        aria-label="Chrome extension"
+        onClick={() => setExtensionOpen(true)}
+      >
+        <Puzzle />
+      </Button>
       <Button
         variant="ghost"
         size="icon"
@@ -380,7 +426,16 @@ function App(): React.JSX.Element {
             transition={{ type: 'spring', stiffness: 260, damping: 30 }}
             className="flex w-full max-w-2xl flex-col gap-3"
           >
-            <div className="rounded-2xl border border-foreground/10 bg-input/50 shadow-lg shadow-foreground/5 backdrop-blur-xl dark:bg-input/30">
+            <BlurReveal
+              as="button"
+              onClick={() => setSitesOpen(true)}
+              className="mb-4 cursor-pointer text-center font-heading text-4xl font-extrabold tracking-tighter"
+              highlightWords={['thousands']}
+              highlightClassName="text-[#0090ff]"
+            >
+              Download from thousands of sites
+            </BlurReveal>
+            <div className="rounded-2xl bg-white shadow-lg shadow-foreground/5 backdrop-blur-xl dark:bg-[#161716]">
               <Textarea
                 placeholder="Paste one URL per line..."
                 value={urlsText}
@@ -397,7 +452,7 @@ function App(): React.JSX.Element {
                         initial={false}
                         animate={{ x: mode === 'video' ? '0%' : '100%' }}
                         transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
-                        className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-background shadow-sm dark:bg-input/30"
+                        className="absolute top-1 bottom-1 left-1 w-[calc(50%-4px)] rounded-full bg-white shadow-sm dark:bg-input/30"
                       />
                       {tabs.map((tab) => (
                         <TabsTrigger
@@ -415,14 +470,6 @@ function App(): React.JSX.Element {
                       ))}
                     </TabsList>
                   </Tabs>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Supported sites"
-                    onClick={() => setSitesOpen(true)}
-                  >
-                    <CircleHelp />
-                  </Button>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {mode === 'video' ? (
@@ -439,7 +486,11 @@ function App(): React.JSX.Element {
                           ))}
                         </SelectContent>
                       </Select>
-                      <Select value={quality} onValueChange={setQuality} disabled={running}>
+                      <Select
+                        value={quality}
+                        onValueChange={(value) => void updateQuality(value)}
+                        disabled={running}
+                      >
                         <SelectTrigger className="w-[92px]">
                           <SelectValue placeholder="Quality" />
                         </SelectTrigger>
@@ -501,7 +552,8 @@ function App(): React.JSX.Element {
                     </>
                   )}
                   <Button
-                    size="icon"
+                    size="icon-sm"
+                    className="bg-[#0090ff] text-white hover:bg-[#0090ff]/80"
                     aria-label={running ? 'Downloading' : checking ? 'Checking' : 'Download'}
                     onClick={() => void startQueue()}
                     disabled={running || checking || urlCount === 0}
@@ -588,18 +640,38 @@ function App(): React.JSX.Element {
         </div>
       )}
       <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent className="gap-8">
+        <DialogContent className="no-scrollbar max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
             <DialogTitle>Settings</DialogTitle>
           </DialogHeader>
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-medium">Save folder</span>
-              <Button variant="outline" size="sm" onClick={() => void chooseFolder()}>
-                Change
-              </Button>
-            </div>
-            <p className="text-xs break-all text-muted-foreground">{downloadDir}</p>
+          <div className="flex flex-col gap-3 overflow-hidden">
+            <span className="text-sm font-medium">Save folder</span>
+            <Select
+              value={saveMode}
+              onValueChange={(value) => void updateSaveMode(value as SaveMode)}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Save folder" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="folder">Always save in this folder</SelectItem>
+                <SelectItem value="ask">Always ask where to save</SelectItem>
+              </SelectContent>
+            </Select>
+            {saveMode === 'ask' ? (
+              <p className="text-xs text-muted-foreground">
+                You will be asked where to save each time you download.
+              </p>
+            ) : (
+              <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-input/50 px-3 py-2">
+                <span className="min-w-0 flex-1 truncate text-xs" title={downloadDir}>
+                  {downloadDir}
+                </span>
+                <Button variant="outline" size="sm" onClick={() => void chooseFolder()}>
+                  Change
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex flex-col gap-3">
             <span className="text-sm font-medium">Cookies</span>
@@ -652,7 +724,7 @@ function App(): React.JSX.Element {
                     }%`
                   }}
                   transition={{ type: 'spring', bounce: 0.15, duration: 0.35 }}
-                  className="absolute top-1 bottom-1 left-1 w-[calc(100%/3-8px/3)] rounded-full bg-background shadow-sm dark:bg-input/30"
+                  className="absolute top-1 bottom-1 left-1 w-[calc(100%/3-8px/3)] rounded-full bg-white shadow-sm dark:bg-input/30"
                 />
                 {themeTabs.map((tab) => (
                   <TabsTrigger
@@ -706,12 +778,64 @@ function App(): React.JSX.Element {
               </div>
             )}
           </div>
+          <div className="flex items-center justify-between">
+            <span className="text-sm font-medium">Start on system startup</span>
+            <Switch
+              checked={launchAtLogin}
+              onCheckedChange={(checked) => void updateLaunchAtLogin(checked)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={extensionOpen} onOpenChange={setExtensionOpen}>
+        <DialogContent className="no-scrollbar max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden">
+          <DialogHeader>
+            <DialogTitle>Chrome extension</DialogTitle>
+            <DialogDescription>
+              Send the tab you are on straight to Cheepli Download.
+            </DialogDescription>
+          </DialogHeader>
+          <ol className="flex list-decimal flex-col gap-1.5 pl-4 text-sm text-muted-foreground">
+            <li>
+              Copy{' '}
+              <button
+                type="button"
+                className="cursor-pointer underline underline-offset-2 hover:text-foreground"
+                onClick={() => void copyChromeUrl()}
+              >
+                {copied ? 'Copied!' : 'chrome://extensions'}
+              </button>{' '}
+              and paste it into your browser&apos;s address bar, then turn on Developer mode.
+            </li>
+            <li>
+              Click &quot;Open folder&quot; below, then drag the highlighted folder into the
+              chrome://extensions page.
+            </li>
+          </ol>
+          <div className="flex min-w-0 items-center justify-between gap-3 rounded-2xl bg-input/50 px-3 py-2">
+            <span className="min-w-0 flex-1 truncate text-xs" title={extensionDir}>
+              {extensionDir}
+            </span>
+            <Button variant="outline" size="sm" onClick={() => void openExtensionFolder()}>
+              Open folder
+            </Button>
+          </div>
+          <ol
+            start={3}
+            className="flex list-decimal flex-col gap-1.5 pl-4 text-sm text-muted-foreground"
+          >
+            <li>Click the Cheepli Download icon on any page to send it to this app.</li>
+          </ol>
+          <p className="text-xs text-muted-foreground">
+            Keep the app running while you use the extension. The badge shows OK when the link was
+            sent, or X if the app is not running.
+          </p>
         </DialogContent>
       </Dialog>
       <Dialog open={sitesOpen} onOpenChange={setSitesOpen}>
-        <DialogContent className="pt-4">
+        <DialogContent className="no-scrollbar max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden">
           <DialogHeader>
-            <DialogTitle className="text-lg">Supported sites</DialogTitle>
+            <DialogTitle>Supported sites</DialogTitle>
             <DialogDescription>
               Downloads work with thousands of sites, including:
             </DialogDescription>
